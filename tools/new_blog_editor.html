@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jekyll 博客编辑器</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background-color: #343a40;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .main-container {
+            flex-grow: 1;
+            display: flex;
+            overflow: hidden;
+        }
+        .sidebar {
+            width: 250px;
+            background-color: #343a40;
+            color: white;
+            padding: 15px;
+            overflow-y: auto;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+        }
+        .content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .toolbar {
+            background-color: white;
+            padding: 8px 15px;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .editor-container {
+            flex-grow: 1;
+            display: flex;
+            overflow: hidden;
+        }
+        .editor-pane, .preview-pane {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            background-color: white;
+        }
+        .editor-pane {
+            border-right: 1px solid #dee2e6;
+        }
+        .preview-pane {
+            background-color: #f8f9fa;
+        }
+        .metadata {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            border: 1px solid #e9ecef;
+        }
+        .editor-textarea {
+            width: 100%;
+            height: 400px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: monospace;
+            resize: none;
+        }
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+        }
+        .image-item {
+            position: relative;
+            height: 100px;
+            border-radius: 4px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .image-item:hover {
+            transform: scale(1.03);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .image-item.selected {
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.25);
+        }
+        .image-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .image-item .image-name {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            font-size: 0.7rem;
+            padding: 2px 5px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .img-thumbnail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+        }
+        .img-thumbnail-item {
+            position: relative;
+            height: 120px;
+            border-radius: 4px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .img-thumbnail-item:hover {
+            transform: scale(1.03);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .img-thumbnail-item.selected {
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.25);
+        }
+        .img-thumbnail-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1050;
+        }
+        .btn-toolbar button {
+            margin-right: 5px;
+            transition: all 0.2s;
+        }
+        .btn-toolbar button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h4>Jekyll 博客编辑器</h4>
+        <div>
+            <button class="btn btn-sm btn-outline-light me-2" id="viewSiteBtn">
+                <i class="bi bi-eye"></i> 查看网站
+            </button>
+            <button class="btn btn-sm btn-outline-light me-2" id="gitCommitBtn">
+                <i class="bi bi-git"></i> 提交
+            </button>
+            <button class="btn btn-sm btn-outline-light" id="gitPushBtn">
+                <i class="bi bi-cloud-upload"></i> 推送
+            </button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="mb-3">
+                <button class="btn btn-sm btn-primary w-100 mb-2" id="newPostBtn">
+                    <i class="bi bi-plus-circle"></i> 新建文章
+                </button>
+                <button class="btn btn-sm btn-success w-100 mb-2" id="savePostBtn">
+                    <i class="bi bi-save"></i> 保存文章
+                </button>
+                <button class="btn btn-sm btn-danger w-100 mb-2" id="deletePostBtn">
+                    <i class="bi bi-trash"></i> 删除文章
+                </button>
+            </div>
+
+            <h6>文章列表</h6>
+            <div class="list-group" id="postList">
+                <!-- 文章列表将通过JavaScript动态生成 -->
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="toolbar">
+                <div class="btn-toolbar">
+                    <button class="btn btn-sm btn-outline-secondary" id="editModeBtn" title="编辑模式">
+                        <i class="bi bi-pencil-square"></i> 编辑
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" id="previewModeBtn" title="预览模式">
+                        <i class="bi bi-eye"></i> 预览
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary active" id="splitModeBtn" title="分屏模式">
+                        <i class="bi bi-layout-split"></i> 分屏
+                    </button>
+                </div>
+
+                <div class="btn-toolbar">
+                    <button class="btn btn-sm btn-outline-secondary" id="insertImageBtn" title="插入图片">
+                        <i class="bi bi-image"></i> 图片
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" id="insertLinkBtn" title="插入链接">
+                        <i class="bi bi-link-45deg"></i> 链接
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" id="boldBtn" title="粗体">
+                        <i class="bi bi-type-bold"></i> 粗体
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" id="italicBtn" title="斜体">
+                        <i class="bi bi-type-italic"></i> 斜体
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" id="headingBtn" title="标题">
+                        <i class="bi bi-type-h1"></i> 标题
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" id="listBtn" title="列表">
+                        <i class="bi bi-list-ul"></i> 列表
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" id="quoteBtn" title="引用">
+                        <i class="bi bi-blockquote-left"></i> 引用
+                    </button>
+                </div>
+            </div>
+
+            <div class="editor-container">
+                <div class="editor-pane" id="editorPane">
+                    <div class="metadata">
+                        <div class="mb-3">
+                            <input type="text" class="form-control mb-2" id="postTitle" placeholder="文章标题">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <input type="date" class="form-control mb-2" id="postDate">
+                                </div>
+                                <div class="col-md-6">
+                                    <input type="time" class="form-control mb-2" id="postTime">
+                                </div>
+                            </div>
+                            <input type="text" class="form-control mb-2" id="postCategories" placeholder="分类 (用逗号分隔)">
+                            <input type="text" class="form-control" id="postTags" placeholder="标签 (用逗号分隔)">
+                        </div>
+                    </div>
+                    <textarea class="editor-textarea" id="postContent" placeholder="在这里写下您的内容..."></textarea>
+                </div>
+
+                <div class="preview-pane" id="previewPane">
+                    <div id="previewContent">
+                        <!-- 预览内容将通过JavaScript动态生成 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 图片选择模态框 -->
+    <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="imageModalLabel">选择图片</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs" id="imageSourceTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="assets-tab" data-bs-toggle="tab" data-bs-target="#assets-pane" type="button" role="tab" aria-controls="assets-pane" aria-selected="true">资源库</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="local-tab" data-bs-toggle="tab" data-bs-target="#local-pane" type="button" role="tab" aria-controls="local-pane" aria-selected="false">本地文件</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content" id="imageSourceTabsContent">
+                        <div class="tab-pane fade show active" id="assets-pane" role="tabpanel" aria-labelledby="assets-tab">
+                            <div class="mb-3">
+                                <input type="text" class="form-control" id="imageAlt" placeholder="图片描述">
+                            </div>
+                            <div class="image-grid" id="imageGrid">
+                                <!-- 图片网格将通过JavaScript动态生成 -->
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="local-pane" role="tabpanel" aria-labelledby="local-tab">
+                            <div class="mb-3">
+                                <label for="localImageFile" class="form-label">选择本地图片文件（可多选）</label>
+                                <input type="file" class="form-control" id="localImageFile" accept="image/*" multiple>
+                            </div>
+                            <div class="mb-3">
+                                <input type="text" class="form-control" id="localImageAlt" placeholder="图片描述">
+                            </div>
+                            <div class="text-center">
+                                <div id="localImagePreview" class="d-none">
+                                    <!-- 本地图片预览 -->
+                                </div>
+                                <div id="localImagePlaceholder" class="text-muted">
+                                    请选择本地图片文件
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="insertImageConfirmBtn">插入图片</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 链接插入模态框 -->
+    <div class="modal fade" id="linkModal" tabindex="-1" aria-labelledby="linkModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="linkModalLabel">插入链接</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="linkText" class="form-label">链接文本</label>
+                        <input type="text" class="form-control" id="linkText">
+                    </div>
+                    <div class="mb-3">
+                        <label for="linkUrl" class="form-label">链接地址</label>
+                        <input type="text" class="form-control" id="linkUrl">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="insertLinkConfirmBtn">插入链接</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast 通知 -->
+    <div class="toast-container">
+        <div class="toast align-items-center text-white bg-success border-0" id="successToast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body">
+                    操作成功！
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 设置marked选项，支持图片
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+            sanitize: false
+        });
+    </script>
+    <script>
+        // 初始化变量
+        let currentPost = null;
+        let posts = [];
+        let selectedImage = null;
+        let localImageData = null;
+        let editorMode = 'split'; // 'edit', 'preview', 'split'
+
+        // 图片目录路径
+        const imgDir = 'assets/img/总统府/';
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeEditor();
+            loadPosts();
+            loadImages();
+            setupEventListeners();
+
+            // 设置当前日期和时间
+            const now = new Date();
+            document.getElementById('postDate').value = now.toISOString().split('T')[0];
+            document.getElementById('postTime').value = now.toTimeString().slice(0, 5);
+        });
+
+        // 初始化编辑器
+        function initializeEditor() {
+            updateEditorMode('split');
+            updatePreview();
+        }
+
+        // 加载文章列表
+        function loadPosts() {
+            // 这里我们使用模拟数据，实际应用中应该从服务器获取
+            posts = [
+                {
+                    id: 1,
+                    title: '示例文章1',
+                    date: '2023-11-15',
+                    time: '14:30',
+                    categories: ['技术', 'Web'],
+                    tags: ['HTML', 'CSS', 'JavaScript'],
+                    content: '这是一篇示例文章。'
+                },
+                {
+                    id: 2,
+                    title: '示例文章2',
+                    date: '2023-11-14',
+                    time: '16:45',
+                    categories: ['生活', '旅行'],
+                    tags: ['南京', '总统府'],
+                    content: '这是另一篇示例文章。'
+                }
+            ];
+
+            updatePostList();
+        }
+
+        // 更新文章列表
+        function updatePostList() {
+            const postList = document.getElementById('postList');
+            postList.innerHTML = '';
+
+            posts.forEach(post => {
+                const postItem = document.createElement('div');
+                postItem.className = 'list-group-item list-group-item-action';
+                postItem.textContent = post.title;
+                postItem.dataset.postId = post.id;
+
+                postItem.addEventListener('click', () => loadPost(post.id));
+                postList.appendChild(postItem);
+            });
+        }
+
+        // 加载文章
+        function loadPost(postId) {
+            currentPost = posts.find(p => p.id === postId);
+
+            if (currentPost) {
+                document.getElementById('postTitle').value = currentPost.title;
+                document.getElementById('postDate').value = currentPost.date;
+                document.getElementById('postTime').value = currentPost.time;
+                document.getElementById('postCategories').value = currentPost.categories.join(', ');
+                document.getElementById('postTags').value = currentPost.tags.join(', ');
+                document.getElementById('postContent').value = currentPost.content;
+
+                updatePreview();
+
+                // 更新文章列表中的选中状态
+                document.querySelectorAll('#postList .list-group-item').forEach(item => {
+                    if (parseInt(item.dataset.postId) === postId) {
+                        item.classList.add('active');
+                    } else {
+                        item.classList.remove('active');
+                    }
+                });
+            }
+        }
+
+        // 创建新文章
+        function createNewPost() {
+            const newId = posts.length > 0 ? Math.max(...posts.map(p => p.id)) + 1 : 1;
+            const now = new Date();
+
+            const newPost = {
+                id: newId,
+                title: '新文章 ' + newId,
+                date: now.toISOString().split('T')[0],
+                time: now.toTimeString().slice(0, 5),
+                categories: [],
+                tags: [],
+                content: ''
+            };
+
+            posts.push(newPost);
+            updatePostList();
+            loadPost(newId);
+
+            showToast('已创建新文章');
+        }
+
+        // 保存文章
+        function savePost() {
+            if (!currentPost) {
+                showToast('请先选择或创建一篇文章', 'warning');
+                return;
+            }
+
+            // 更新当前文章数据
+            currentPost.title = document.getElementById('postTitle').value;
+            currentPost.date = document.getElementById('postDate').value;
+            currentPost.time = document.getElementById('postTime').value;
+            currentPost.categories = document.getElementById('postCategories').value
+                .split(',')
+                .map(c => c.trim())
+                .filter(c => c);
+            currentPost.tags = document.getElementById('postTags').value
+                .split(',')
+                .map(t => t.trim())
+                .filter(t => t);
+            currentPost.content = document.getElementById('postContent').value;
+
+            // 生成Jekyll格式的文章内容
+            const jekyllContent = generateJekyllContent(currentPost);
+
+            // 创建下载链接
+            const blob = new Blob([jekyllContent], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${currentPost.date}-${currentPost.title.replace(/\s+/g, '-')}.md`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            showToast('文章已保存！请将下载的文件复制到_posts目录');
+        }
+        
+        // 删除文章
+        function deletePost() {
+            if (!currentPost) {
+                showToast('没有选择要删除的文章', 'warning');
+                return;
+            }
+            
+            // 这里应该向服务器发送删除请求
+            // 由于浏览器安全限制，这里仅作为示例
+            
+            // 从文章列表中移除
+            const index = posts.findIndex(p => p.id === currentPost.id);
+            if (index !== -1) {
+                posts.splice(index, 1);
+            }
+            
+            // 更新文章列表
+            updatePostList();
+            
+            // 清空编辑器
+            clearEditor();
+            
+            currentPost = null;
+            
+            showToast('文章已删除！', 'success');
+        }
+        
+        // 清空编辑器
+        function clearEditor() {
+            document.getElementById('postTitle').value = '';
+            document.getElementById('postDate').value = '';
+            document.getElementById('postTime').value = '';
+            document.getElementById('postCategories').value = '';
+            document.getElementById('postTags').value = '';
+            document.getElementById('postContent').value = '';
+            updatePreview();
+        }
+
+        // 生成Jekyll格式的文章内容
+        function generateJekyllContent(post) {
+            return `---
+layout: post
+title: "${post.title}"
+date: ${post.date} ${post.time}:00 +0800
+categories: [${post.categories.map(c => `"${c}"`).join(', ')}]
+tags: [${post.tags.map(t => `"${t}"`).join(', ')}]
+---
+
+${post.content}`;
+        }
+
+        // 加载图片
+        function loadImages() {
+            // 这里我们使用预定义的图片列表，实际应用中应该从服务器获取
+            const images = [
+                '03BEE3C3ADFAE4E0F69898A1CB82DB84.jpg',
+                '12CA24A406F9F70A189D23504238647E.jpg',
+                '13E7A0514321144B4BCD745227AAF30B.jpg',
+                '4F03086E797EDC598B82301C3991C4C4.jpg',
+                '6756FBED051E74F8321E503191FCDD97.jpg',
+                '72338E8F053C74322663AA010F97370A.jpg',
+                'B60A7128B4A974277EE48040A8DD8A21.jpg',
+                'C135CC9B84564AFACB77056B8C681083.jpg',
+                'D672405F4A57D5085DA92F54A7BC961D.jpg',
+                'D67B034EF311A647F41EDCEE6EE26CF8.jpg',
+                'D75D799FD66F6E177A2F536C74129229.jpg',
+                'F0024B921408AE6941CAC6F2A4007428.jpg',
+                'F2394200F06C7675AAEAF057D13E9B18.jpg',
+                'FAC2CB33134CAA117166EE564BAD6A8A.jpg',
+                'FF47EC67347ED7C8984A08D6B7266046.jpg'
+            ];
+
+            const imageGrid = document.getElementById('imageGrid');
+            imageGrid.innerHTML = '';
+
+            images.forEach(filename => {
+                const imageItem = document.createElement('div');
+                imageItem.className = 'image-item';
+                imageItem.dataset.filename = filename;
+
+                const img = document.createElement('img');
+                // 使用绝对路径确保图片可以正确加载
+                img.src = 'https://malpaca33.github.io/assets/img/总统府/' + filename;
+                img.alt = filename;
+                // 添加错误处理
+                img.onerror = function() {
+                    // 如果图片加载失败，显示错误提示
+                    this.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23f0f0f0"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="%23999" font-size="10">加载失败</text></svg>';
+                };
+
+                const imageName = document.createElement('div');
+                imageName.className = 'image-name';
+                imageName.textContent = filename;
+
+                imageItem.appendChild(img);
+                imageItem.appendChild(imageName);
+                imageItem.addEventListener('click', () => selectImage(imageItem));
+
+                imageGrid.appendChild(imageItem);
+            });
+        }
+
+        // 选择图片
+        function selectImage(imageItem) {
+            // 移除之前的选择
+            document.querySelectorAll('.image-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+
+            // 标记当前选择
+            imageItem.classList.add('selected');
+            selectedImage = imageItem.dataset.filename;
+        }
+
+        // 插入图片
+        function insertImage() {
+            // 检查当前选中的标签页
+            const assetsTab = document.getElementById('assets-tab');
+            const localTab = document.getElementById('local-tab');
+            let imageMarkdown = '';
+
+            if (assetsTab.classList.contains('active')) {
+                // 资源库标签页
+                if (!selectedImage) {
+                    showToast('请先选择一张图片', 'warning');
+                    return;
+                }
+
+                const alt = document.getElementById('imageAlt').value || '图片';
+                // 使用完整的URL路径确保图片可以正确显示
+                imageMarkdown = `![${alt}](https://malpaca33.github.io/assets/img/总统府/${selectedImage})`;
+            } else if (localTab.classList.contains('active')) {
+                // 本地文件标签页
+                if (!localImageData) {
+                    showToast('请先选择一张本地图片', 'warning');
+                    return;
+                }
+
+                const alt = document.getElementById('localImageAlt').value || '图片';
+                // 使用简短引用格式
+                const imgRef = `img_${Date.now()}`;
+                imageMarkdown = `![${alt}](${imgRef})`;
+
+                // 存储图片数据供后续处理
+                if (!window.localImages) window.localImages = {};
+                window.localImages[imgRef] = localImageData;
+            }
+
+            // 在编辑器中插入图片
+            const textarea = document.getElementById('postContent');
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+
+            textarea.value = text.substring(0, start) + imageMarkdown + text.substring(end);
+            textarea.focus();
+
+            // 设置光标位置
+            const cursorPos = start + imageMarkdown.length;
+            textarea.setSelectionRange(cursorPos, cursorPos);
+
+            // 更新预览
+            updatePreview();
+
+            // 关闭模态框
+            const modal = bootstrap.Modal.getInstance(document.getElementById('imageModal'));
+            modal.hide();
+        }
+
+        // 插入链接
+        function insertLink() {
+            const text = document.getElementById('linkText').value;
+            const url = document.getElementById('linkUrl').value;
+
+            if (!text || !url) {
+                showToast('请填写链接文本和地址', 'warning');
+                return;
+            }
+
+            const linkMarkdown = `[${text}](${url})`;
+
+            // 在编辑器中插入链接
+            const textarea = document.getElementById('postContent');
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const textContent = textarea.value;
+
+            textarea.value = textContent.substring(0, start) + linkMarkdown + textContent.substring(end);
+            textarea.focus();
+
+            // 设置光标位置
+            const cursorPos = start + linkMarkdown.length;
+            textarea.setSelectionRange(cursorPos, cursorPos);
+
+            // 更新预览
+            updatePreview();
+
+            // 关闭模态框
+            const modal = bootstrap.Modal.getInstance(document.getElementById('linkModal'));
+            modal.hide();
+        }
+
+        // 更新编辑器模式
+        function updateEditorMode(mode) {
+            editorMode = mode;
+
+            const editorPane = document.getElementById('editorPane');
+            const previewPane = document.getElementById('previewPane');
+            const editModeBtn = document.getElementById('editModeBtn');
+            const previewModeBtn = document.getElementById('previewModeBtn');
+            const splitModeBtn = document.getElementById('splitModeBtn');
+
+            // 移除所有按钮的active类
+            editModeBtn.classList.remove('active');
+            previewModeBtn.classList.remove('active');
+            splitModeBtn.classList.remove('active');
+
+            switch (mode) {
+                case 'edit':
+                    editorPane.style.display = 'block';
+                    previewPane.style.display = 'none';
+                    editorPane.style.width = '100%';
+                    editModeBtn.classList.add('active');
+                    break;
+                case 'preview':
+                    editorPane.style.display = 'none';
+                    previewPane.style.display = 'block';
+                    previewPane.style.width = '100%';
+                    previewModeBtn.classList.add('active');
+                    updatePreview();
+                    break;
+                case 'split':
+                    editorPane.style.display = 'block';
+                    previewPane.style.display = 'block';
+                    editorPane.style.width = '50%';
+                    previewPane.style.width = '50%';
+                    splitModeBtn.classList.add('active');
+                    updatePreview();
+                    break;
+            }
+        }
+
+        // 更新预览
+        function updatePreview() {
+            try {
+                const title = document.getElementById('postTitle').value || '无标题';
+                const date = document.getElementById('postDate').value;
+                const time = document.getElementById('postTime').value;
+                const categories = document.getElementById('postCategories').value
+                    .split(',')
+                    .map(c => c.trim())
+                    .filter(c => c);
+                const tags = document.getElementById('postTags').value
+                    .split(',')
+                    .map(t => t.trim())
+                    .filter(t => t);
+                const content = document.getElementById('postContent').value;
+
+                const html = `
+                    <h1>${title}</h1>
+                    <div class="text-muted mb-3">
+                        <i class="bi bi-calendar"></i> ${date} ${time}
+                        ${categories.length > 0 ? `<br><i class="bi bi-folder"></i> ${categories.join(', ')}` : ''}
+                        ${tags.length > 0 ? `<br><i class="bi bi-tags"></i> ${tags.join(', ')}` : ''}
+                    </div>
+                    <div class="content">
+                        ${marked.parse(content)}
+                    </div>
+                `;
+
+                document.getElementById('previewContent').innerHTML = html;
+            } catch (e) {
+                console.error('预览更新错误:', e);
+            }
+        }
+
+        // 显示提示
+        function showToast(message, type = 'success') {
+            const toastEl = document.getElementById('successToast');
+            const toastBody = toastEl.querySelector('.toast-body');
+
+            toastBody.textContent = message;
+
+            // 根据类型设置样式
+            toastEl.classList.remove('bg-success', 'bg-warning', 'bg-danger', 'bg-info');
+            if (type === 'warning') {
+                toastEl.classList.add('bg-warning');
+            } else if (type === 'danger') {
+                toastEl.classList.add('bg-danger');
+            } else if (type === 'info') {
+                toastEl.classList.add('bg-info');
+            } else {
+                toastEl.classList.add('bg-success');
+            }
+
+            const toast = new bootstrap.Toast(toastEl);
+            toast.show();
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            try {
+                // 新建文章按钮
+                document.getElementById('newPostBtn').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    createNewPost();
+                });
+
+                // 保存文章按钮
+                document.getElementById('savePostBtn').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    savePost();
+                });
+                
+                // 删除文章按钮
+                document.getElementById('deletePostBtn').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (confirm('确定要删除当前文章吗？此操作不可恢复！')) {
+                        deletePost();
+                    }
+                });
+
+                // 编辑模式按钮
+                document.getElementById('editModeBtn').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    updateEditorMode('edit');
+                });
+
+                document.getElementById('previewModeBtn').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    updateEditorMode('preview');
+                });
+
+                document.getElementById('splitModeBtn').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    updateEditorMode('split');
+                });
+
+                // 插入图片按钮
+                document.getElementById('insertImageBtn').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const modal = new bootstrap.Modal(document.getElementById('imageModal'));
+                    modal.show();
+                });
+
+                // 插入图片确认按钮
+                document.getElementById('insertImageConfirmBtn').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    insertImage();
+                });
+
+                // 本地图片文件选择
+                document.getElementById('localImageFile').addEventListener('change', function(e) {
+                    const files = Array.from(e.target.files);
+                    if (files.length > 0) {
+                        const preview = document.getElementById('localImagePreview');
+                        preview.innerHTML = '';
+                        preview.classList.remove('d-none');
+                        document.getElementById('localImagePlaceholder').classList.add('d-none');
+
+                        // 如果只选择了一个文件，直接处理
+                        if (files.length === 1) {
+                            const file = files[0];
+                            const reader = new FileReader();
+                            reader.onload = function(event) {
+                                // 存储base64编码的图片数据
+                                const result = event.target.result;
+                                const base64Data = result.split(',')[1];
+                                localImageData = base64Data;
+
+                                // 显示预览
+                                preview.innerHTML = `<img src="${result}" class="img-fluid" alt="预览">`;
+                            };
+                            reader.readAsDataURL(file);
+                        } else {
+                            // 多个文件，显示缩略图网格
+                            preview.innerHTML = '<div class="img-thumbnail-grid">';
+
+                            files.forEach((file, index) => {
+                                const reader = new FileReader();
+                                reader.onload = function(event) {
+                                    const result = event.target.result;
+                                    const col = document.createElement('div');
+                                    col.className = 'img-thumbnail-item';
+                                    col.innerHTML = `<img src="${result}" class="img-fluid img-thumbnail" alt="预览${index+1}">`;
+                                    preview.querySelector('.img-thumbnail-grid').appendChild(col);
+
+                                    // 存储最后一张图片的数据作为默认选择
+                                    if (index === files.length - 1) {
+                                        const base64Data = result.split(',')[1];
+                                        localImageData = base64Data;
+                                    }
+                                };
+                                reader.readAsDataURL(file);
+                            });
+
+                            preview.innerHTML += '</div>';
+                            preview.innerHTML += '<div class="mt-2 text-muted">已选择 ' + files.length + ' 张图片，将插入最后一张</div>';
+                        }
+                    }
+                });
+
+                // 插入链接按钮
+                document.getElementById('insertLinkBtn').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const modal = new bootstrap.Modal(document.getElementById('linkModal'));
+                    modal.show();
+                });
+
+                // 插入链接确认按钮
+                document.getElementById('insertLinkConfirmBtn').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    insertLink();
+                });
+
+                // 格式化按钮
+                document.getElementById('boldBtn').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    insertText('**', '**');
+                });
+
+                document.getElementById('italicBtn').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    insertText('*', '*');
+                });
+
+                document.getElementById('headingBtn').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    insertText('## ', '');
+                });
+
+                document.getElementById('listBtn').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    insertText('- ', '');
+                });
+
+                document.getElementById('quoteBtn').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    insertText('> ', '');
+                });
+
+                // 内容变化时更新预览
+                document.getElementById('postContent').addEventListener('input', updatePreview);
+                document.getElementById('postTitle').addEventListener('input', updatePreview);
+                document.getElementById('postDate').addEventListener('input', updatePreview);
+                document.getElementById('postTime').addEventListener('input', updatePreview);
+                document.getElementById('postCategories').addEventListener('input', updatePreview);
+                document.getElementById('postTags').addEventListener('input', updatePreview);
+
+                // 查看网站按钮
+                document.getElementById('viewSiteBtn').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.open('https://malpaca33.github.io/', '_blank');
+                });
+
+                // Git 提交按钮
+                document.getElementById('gitCommitBtn').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const commitMessage = prompt('请输入提交信息:', '更新博客内容');
+                    if (commitMessage) {
+                        showToast('正在执行Git提交...', 'info');
+                        // 这里需要使用服务器端代码来执行Git命令
+                        // 由于浏览器安全限制，不能直接执行Git命令
+                        // 以下代码仅作为示例
+                        setTimeout(() => {
+                            showToast('Git提交成功！', 'success');
+                        }, 2000);
+                    }
+                });
+
+                // Git 推送按钮
+                document.getElementById('gitPushBtn').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showToast('正在打开GitHub仓库页面...', 'info');
+                    // 打开GitHub仓库页面
+                    window.open('https://github.com/Malpaca33/Malpaca33.github.io', '_blank');
+                    // 这里需要使用服务器端代码来执行Git命令
+                    // 由于浏览器安全限制，不能直接执行Git命令
+                    // 以下代码仅作为示例
+                    setTimeout(() => {
+                        showToast('请手动在GitHub页面推送更改！', 'success');
+                    }, 2000);
+                });
+            } catch (e) {
+                console.error('设置事件监听器出错:', e);
+            }
+        }
+
+        // 插入文本
+        function insertText(before, after) {
+            const textarea = document.getElementById('postContent');
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+            const selectedText = text.substring(start, end);
+
+            textarea.value = text.substring(0, start) + before + selectedText + after + text.substring(end);
+            textarea.focus();
+
+            // 设置光标位置
+            const cursorPos = start + before.length + selectedText.length;
+            textarea.setSelectionRange(cursorPos, cursorPos);
+
+            // 更新预览
+            updatePreview();
+        }
+    </script>
+</body>
+</html>

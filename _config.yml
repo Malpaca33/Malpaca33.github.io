@@ -30,10 +30,8 @@ url: "https://Malpaca33.github.io"
 
 github:
   username: Malpaca33 # 更改为您的GitHub用户名
-
-twitter:
-  username: # 更改为您的Twitter用户名
-
+QQ:
+  username: 2696751170
 social:
   # 更改为您的全名。
   # 它将显示为文章的默认作者和页脚中的版权所有者
@@ -41,7 +39,7 @@ social:
   email: malpaca56@gmail.com # 更改为您的电子邮件地址
   links:
     # 第一个元素作为版权所有者的链接
-    - https://twitter.com/username # 更改为您的Twitter主页
+    # 更改为您的Twitter主页
     - https://github.com/username # 更改为您的GitHub主页
     # 取消下面的注释以添加更多社交链接
     # - https://www.facebook.com/username

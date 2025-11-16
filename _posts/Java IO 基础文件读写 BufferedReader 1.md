@@ -1,0 +1,84 @@
+### 🔹问题1 为什么用 BufferedReader
+
+- 高效，性能好
+- `FileReader` 是细水管，一滴一滴流；
+- `BufferedReader` 是加了水箱的粗水管，一次放满再慢慢用。
+- **缓冲 = 用空间换时间**，这是计算机世界的通用智慧。
+
+### 如果......会怎样
+- 涉及高性能IO的核心思想：减少系统调用次数，批量操作才能发挥CPU效率
+- 所以 **流要缓冲，资源要自动关，异常要兜底** ，这就是try-catch
+
+### 能用来干嘛
+- 文件读取
+
+### 🔹 问题2：文件 10GB，会 OOM 吗？怎么改？
+
+✅ 会。
+
+1 是什么？  
+把所有行存进 `List<String>`，内存占用 ≈ 文件大小。
+
+2 为什么？  
+JVM 堆有限，大文件全加载必崩，GC 也救不了。
+
+3 能用来干嘛？  
+边读边处理，一行搞定一行：
+
+```java
+while ((line = br.readLine()) != null) {
+    // 处理逻辑
+}
+```
+
+内存恒定，适合日志分析、数据清洗等场景。
+💡 感想：真正的效率，是只拿需要的那一行。
+
+明白！以下是**行紧缩、无多余 emoji、问题不带符号**，三步走严格按：
+
+1. **为什么用**  
+2. **如果……会怎样**  
+3. **能用来干嘛**
+
+并保留**彩色数字块样式**的通用笔记模板：
+
+---
+
+### 问题3：FileInputStream 能不能直接给 BufferedReader 用？  
+❌ 不行。
+
+<span style="background-color: #0078d4; color: white; padding: 0.2em 0.5em; border-radius: 3px; font-size: 0.9em; display: inline-block;">1</span> 为什么用  
+因为文本读取需要字符流，而 FileInputStream 是字节流，必须通过 InputStreamReader 指定编码转成字符。
+
+<span style="background-color: #0078d4; color: white; padding: 0.2em 0.5em; border-radius: 3px; font-size: 0.9em; display: inline-block;">2</span> 如果……会怎样  
+如果直接传 FileInputStream 给 BufferedReader，编译报错；若绕过类型检查，运行时会乱码或崩溃，尤其跨平台时默认编码不同。
+
+<span style="background-color: #0078d4; color: white; padding: 0.2em 0.5em; border-radius: 3px; font-size: 0.9em; display: inline-block;">3</span> 能用来干嘛  
+安全读取任意编码的文本文件：
+```java
+new BufferedReader(new InputStreamReader(new FileInputStream("f"), "UTF-8"));
+```
+适用于日志、配置、CSV 等需明确编码的场景。
+
+💡 感想：显式胜于隐式，编码别让 JVM 猜。
+
+---
+
+### 问题4：大文件全读进 List 会 OOM 吗？  
+✅ 会。
+
+<span style="background-color: #0078d4; color: white; padding: 0.2em 0.5em; border-radius: 3px; font-size: 0.9em; display: inline-block;">1</span> 为什么用  
+流式逐行处理是为了避免内存与文件大小绑定，保持常量内存占用。
+
+<span style="background-color: #0078d4; color: white; padding: 0.2em 0.5em; border-radius: 3px; font-size: 0.9em; display: inline-block;">2</span> 如果……会怎样  
+如果把 10GB 文件所有行存进 ArrayList，JVM 必然 OutOfMemoryError，即使调大堆内存也只是延迟崩溃。
+
+<span style="background-color: #0078d4; color: white; padding: 0.2em 0.5em; border-radius: 3px; font-size: 0.9em; display: inline-block;">3</span> 能用来干嘛  
+边读边处理，比如实时过滤错误日志、统计访问 IP：
+```java
+while ((line = br.readLine()) != null) {
+    if (line.contains("ERROR")) handle(line);
+}
+```
+
+💡 感想：不囤数据，只做流水线，才是大文件的正确打开方式。
