@@ -2,3 +2,15 @@
 layout: home
 # Index page
 ---
+
+# 欢迎来到我的博客
+
+这里是一个使用Jekyll和Chirpy主题构建的个人博客。
+
+## 最新文章
+
+{% for post in site.posts limit:3 %}
+### [{{ post.title }}]({{ post.url }})
+{{ post.date | date: "%Y年%m月%d日" }}
+
+{% endfor %}
