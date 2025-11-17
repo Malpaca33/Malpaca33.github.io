@@ -658,8 +658,8 @@ ${post.content}`;
                 }
 
                 const alt = document.getElementById('imageAlt').value || '图片';
-                // 使用完整的URL路径确保图片可以正确显示
-                imageMarkdown = `![${alt}](https://malpaca33.github.io/assets/img/总统府/${selectedImage})`;
+                // 使用标准完整路径格式
+                imageMarkdown = `![${alt}](/assets/img/总统府/${selectedImage})`;
             } else if (localTab.classList.contains('active')) {
                 // 本地文件标签页
                 if (!localImageData) {
@@ -668,8 +668,8 @@ ${post.content}`;
                 }
 
                 const alt = document.getElementById('localImageAlt').value || '图片';
-                // 使用简短引用格式
-                const imgRef = `img_${Date.now()}`;
+                // 使用标准完整路径格式
+                const imgRef = `/assets/img/${Date.now()}.jpg`;
                 imageMarkdown = `![${alt}](${imgRef})`;
 
                 // 存储图片数据供后续处理
@@ -787,6 +787,19 @@ ${post.content}`;
                     .filter(t => t);
                 const content = document.getElementById('postContent').value;
 
+                // 处理内容中的图片路径，确保预览时能正确显示
+                let processedContent = content;
+                // 处理总统府图片
+                processedContent = processedContent.replace(
+                    /\!\[([^\]]*)\]\(\/assets\/img\/总统府\/([^\)]+)\)/g,
+                    '![$1](https://malpaca33.github.io/assets/img/总统府/$2)'
+                );
+                // 处理其他图片
+                processedContent = processedContent.replace(
+                    /\!\[([^\]]*)\]\(\/assets\/img\/([^\)]+)\)/g,
+                    '![$1](https://malpaca33.github.io/assets/img/$2)'
+                );
+                
                 const html = `
                     <h1>${title}</h1>
                     <div class="text-muted mb-3">
@@ -795,7 +808,7 @@ ${post.content}`;
                         ${tags.length > 0 ? `<br><i class="bi bi-tags"></i> ${tags.join(', ')}` : ''}
                     </div>
                     <div class="content">
-                        ${marked.parse(content)}
+                        ${marked.parse(processedContent)}
                     </div>
                 `;
 
